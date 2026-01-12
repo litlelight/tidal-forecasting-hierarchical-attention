@@ -1,0 +1,166 @@
+# Model Configuration for Hierarchical Attention Network
+
+# Model Architecture
+model:
+  type: hierarchical_attention
+  input_dim: 8  # Number of input features
+  hidden_dim: 128
+  num_layers: 3
+  
+  # Multi-scale encoder configuration
+  encoder:
+    depths: [2, 3, 4]  # Number of transformer blocks per layer
+    receptive_fields: [6, 24, 168]  # Receptive fields in hours
+    num_heads: [4, 8, 8]  # Attention heads per layer
+    dropout: 0.1
+    activation: gelu
+    
+  # Hierarchical attention fusion
+  fusion:
+    fusion_dim: 256
+    num_fusion_heads: 8
+    dropout: 0.1
+    
+  # Horizon-specific prediction heads
+  prediction:
+    horizons: [1, 6, 12, 24, 48, 72, 168]  # Forecast horizons in hours
+    head_dim: 128
+    dropout: 0.1
+
+# Training Configuration
+training:
+  # Optimization
+  epochs: 100
+  batch_size: 32
+  learning_rate: 0.001
+  optimizer: adamw
+  weight_decay: 0.0001
+  gradient_clip: 1.0
+  
+  # Learning rate scheduling
+  scheduler:
+    type: cosine  # cosine, step, plateau
+    warmup_epochs: 5
+    min_lr: 0.00001
+    
+  # Loss function
+  loss:
+    type: mse  # mse, mae, huber, quantile
+    quantiles: [0.1, 0.5, 0.9]  # For quantile loss
+    
+  # Early stopping
+  early_stopping:
+    patience: 15
+    min_delta: 0.0001
+    monitor: val_loss
+    mode: min
+
+# Data Configuration
+data:
+  # Paths
+  train_data: data/processed/train_split.npz
+  val_data: data/processed/val_split.npz
+  test_data: data/processed/test_split.npz
+  
+  # Sequence parameters
+  sequence_length: 168  # Input sequence length (hours)
+  forecast_horizons: [1, 6, 12, 24, 48, 72, 168]
+  
+  # Data splits (used only for preprocessing)
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  
+  # Features
+  features:
+    - water_level
+    - predicted_tide
+    - residual
+    - wind_speed
+    - wind_direction
+    - pressure
+    - temperature
+    - temporal  # hour, day_of_week, day_of_year (cyclical)
+  
+  target: water_level
+  
+  # Data augmentation (optional)
+  augmentation:
+    enabled: false
+    noise_std: 0.01
+    time_shift: 3  # hours
+    
+# Evaluation Configuration
+evaluation:
+  # Metrics
+  metrics:
+    - mape  # Mean Absolute Percentage Error
+    - rmse  # Root Mean Square Error
+    - mae   # Mean Absolute Error
+    - r2    # R-squared
+    - quantile_loss
+    
+  # Per-horizon evaluation
+  horizons: [1, 6, 12, 24, 48, 72, 168]
+  
+  # Visualization
+  visualize:
+    enabled: true
+    save_dir: results/figures
+    formats: [png, pdf]
+    dpi: 300
+
+# Logging Configuration
+logging:
+  # General
+  log_dir: logs
+  log_interval: 100  # Log every N steps
+  save_interval: 1000  # Save checkpoint every N steps
+  
+  # TensorBoard
+  tensorboard:
+    enabled: true
+    log_dir: runs
+    
+  # Weights & Biases
+  wandb:
+    enabled: false
+    project: tidal-forecasting
+    entity: your-username
+    name: hierarchical-attention
+    tags:
+      - tidal-forecasting
+      - attention
+      - multi-scale
+    
+  # Console output
+  verbose: 1  # 0: silent, 1: progress bar, 2: detailed
+
+# Checkpointing
+checkpoint:
+  save_dir: results/checkpoints
+  save_best: true
+  save_last: true
+  monitor: val_loss
+  mode: min
+  
+# Reproducibility
+seed: 42
+deterministic: true
+
+# Hardware Configuration
+device:
+  type: cuda  # cuda, cpu, mps (for Apple Silicon)
+  gpu_id: 0
+  mixed_precision: true  # Use automatic mixed precision
+  num_workers: 4  # DataLoader workers
+  pin_memory: true
+
+# Experiment Tracking
+experiment:
+  name: hierarchical_attention_v1
+  notes: "Baseline hierarchical attention model with 3 layers"
+  tags:
+    - baseline
+    - hierarchical
+    - multi-scale
